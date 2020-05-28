@@ -1,6 +1,8 @@
-# docker-dynamodb [![CircleCI](https://circleci.com/gh/dwmkerr/docker-dynamodb.svg?style=shield)](https://circleci.com/gh/dwmkerr/docker-dynamodb) [![ImageLayers Badge](https://badge.imagelayers.io/dwmkerr/dynamodb:latest.svg)](https://imagelayers.io/?images=dwmkerr/dynamodb:latest 'Get your own badge on imagelayers.io')
+# docker-dynamodb
 
-[![Docker Hub Badge](http://dockeri.co/image/dwmkerr/dynamodb)](https://registry.hub.docker.com/u/dwmkerr/dynamodb/) [![GuardRails badge](https://badges.production.guardrails.io/dwmkerr/docker-dynamodb.svg)](https://www.guardrails.io)
+[![CircleCI](https://circleci.com/gh/dwmkerr/docker-dynamodb.svg?style=shield)](https://circleci.com/gh/dwmkerr/docker-dynamodb) [![ImageLayers Badge](https://badge.imagelayers.io/dwmkerr/dynamodb:latest.svg)](https://imagelayers.io/?images=dwmkerr/dynamodb:latest 'Get your own badge on imagelayers.io') [![GuardRails badge](https://badges.production.guardrails.io/dwmkerr/docker-dynamodb.svg)](https://www.guardrails.io)
+
+[![Docker Hub Badge](http://dockeri.co/image/dwmkerr/dynamodb)](https://registry.hub.docker.com/u/dwmkerr/dynamodb/)
 
 Run DynamoDB locally with Docker:
 
@@ -18,6 +20,22 @@ Note - there is now an Official AWS Docker Image for DynamoDB:
  - [AWS Blog: Use Amazon DynamoDB Local More Easily with the New Docker Image](https://aws.amazon.com/about-aws/whats-new/2018/08/use-amazon-dynamodb-local-more-easily-with-the-new-docker-image/)
  - [Docker Hub: DynamoDB](https://hub.docker.com/r/amazon/dynamodb-local/)
 
+
+<!-- vim-markdown-toc GFM -->
+
+* [Instructions](#instructions)
+* [Coding](#coding)
+    * [The Dockerfile](#the-dockerfile)
+    * [The Makefile](#the-makefile)
+    * [The Tests](#the-tests)
+* [Continuous Integration](#continuous-integration)
+* [Samples](#samples)
+    * [Generating an Image with Test Data](#generating-an-image-with-test-data)
+    * [Connecting an AWS Lambda Function against a local Database](#connecting-an-aws-lambda-function-against-a-local-database)
+* [Troubleshooting](#troubleshooting)
+* [Contributing](#contributing)
+
+<!-- vim-markdown-toc -->
 
 # Instructions
 
@@ -43,7 +61,7 @@ Without this option, each connection will get is own database and the data will 
 
 # Coding
 
-The code is structued like this:
+The code is structured like this:
 
 ```
 Dockerfile     # the important thing, the actual dockerfile
@@ -83,6 +101,50 @@ A basic sample showing how to build an image with custom test data is at [`./sam
 2. Create some sample data: `make create-test-data`. This creates sample data files at `./data`.
 3. Build a new docker image called `sample-test-data`, with `make build`.
 4. The newly created image has the test data built in. Verify with `make test`.
+
+## Connecting an AWS Lambda Function against a local Database
+
+There's a great blog post on this here:
+
+https://thebitmuncher.home.blog/2019/03/01/how-to-connect-to-local-dynamodb-on-docker-from-local-aws-sam-lambda-node-js-function/
+
+# Troubleshooting
+
+**Missing required key 'ProvisionedThroughput' in params Unexpected key 'BillingMode' found in params**
+
+The issue is the underlying DynamoDB Local jar provided by AWS requires read and write capacity units to be specified (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.UsageNotes.html).
+
+Provisioned throughput settings are ignored in downloadable DynamoDB, even though the CreateTable operation requires them. For CreateTable, you can specify any numbers you want for provisioned read and write throughput, even though these numbers are not used. You can call UpdateTable as many times as you want per day. However, any changes to provisioned throughput values are ignored.
+
+Here is an example CreateTable call which will work:
+
+```js
+// Note we have to specify ProvisionedThroughput, but it will not be used.
+var params = {
+    TableName: 'table',
+    ProvisionedThroughput: {
+        ReadCapacityUnits: 1,
+        WriteCapacityUnits: 1
+    },
+    KeySchema: [
+        {
+            AttributeName: 'id',
+            KeyType: 'HASH',
+        }
+    ],
+    AttributeDefinitions: [
+        {
+            AttributeName: 'id',
+            AttributeType: 'S',
+        }
+    ],
+};
+dynamodb.createTable(params, function(err, data) {
+    if (err) ppJson(err); // an error occurred
+    else ppJson(data); // successful response
+
+});
+```
 
 # Contributing
 
