@@ -9,7 +9,7 @@
 
 # Use JDK 7. I tried alpine, but all calls to dynamo then fail silently...
 # FROM openjdk:7-jre-alpine
-FROM openjdk:7
+FROM openjdk:8
 
 # Some metadata.
 MAINTAINER Dave Kerr <github.com/dwmkerr>
